@@ -1,4 +1,4 @@
-# Paper 2 reproduction pipeline (PyTorch; works on modern Python)
+# Paper 2 reproduction pipeline (Phase A+B, PyTorch)
 torch>=2.1
 transformers>=4.36
 tokenizers>=0.15
@@ -7,3 +7,9 @@ pandas>=1.5
 scikit-learn>=1.2
 tqdm>=4.65
 safetensors>=0.4
+datasets>=2.14
+
+# Optional (SST-5 accuracy-improvement experiments)
+nlpaug>=1.1.11
+nltk>=3.8
+imbalanced-learn>=0.11

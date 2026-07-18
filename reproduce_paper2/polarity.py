@@ -1,20 +1,15 @@
-"""Overall polarity heuristics from Paper 2 (Algorithms 1–4).
-
-Binary path (Algorithm 2) is used by the IMDb-2 reproduction entrypoint.
-"""
+"""Overall polarity heuristics from Paper 2 (Algorithms 1–4)."""
 
 from __future__ import annotations
 
 from collections import Counter
-from typing import Iterable, List, Mapping, Sequence, Union
+from typing import Iterable, List, Mapping, Optional, Sequence, Union
 
 import numpy as np
 
 
 LabelLike = Union[int, str]
 
-
-# Canonical names used in reports
 POS = "positive"
 NEG = "negative"
 NEU = "neutral"
@@ -22,28 +17,39 @@ H_POS = "highly_positive"
 H_NEG = "highly_negative"
 
 
-def _as_label_list(labels: Iterable[LabelLike]) -> List[str]:
+def int_labels_to_names(
+    labels: Iterable[LabelLike],
+    label_names: Optional[Sequence[str]] = None,
+) -> List[str]:
+    """Map integer class ids to canonical string names."""
     out: List[str] = []
     for lab in labels:
-        if isinstance(lab, (int, np.integer)):
-            # binary default: 0=neg, 1=pos
-            out.append(POS if int(lab) == 1 else NEG)
+        if isinstance(lab, str):
+            out.append(lab.lower().replace(" ", "_").replace("-", "_"))
+            continue
+        idx = int(lab)
+        if label_names is not None:
+            out.append(label_names[idx])
         else:
-            out.append(str(lab).lower().replace(" ", "_"))
+            # binary fallback
+            out.append(POS if idx == 1 else NEG)
     return out
+
+
+def _as_label_list(
+    labels: Iterable[LabelLike],
+    label_names: Optional[Sequence[str]] = None,
+) -> List[str]:
+    return int_labels_to_names(labels, label_names)
 
 
 def overall_polarity_binary(
     labels: Iterable[LabelLike],
     majority_coef: float = 1.2,
+    label_names: Optional[Sequence[str]] = None,
 ) -> str:
-    """Algorithm 2 (Paper 2): overall polarity from binary predictions.
-
-    if #pos > coef * #neg → positive
-    elif #neg > coef * #pos → negative
-    else → neutral
-    """
-    labs = _as_label_list(labels)
+    """Algorithm 2: binary overall polarity."""
+    labs = _as_label_list(labels, label_names)
     pos = sum(1 for x in labs if x in {POS, "1", "pos"})
     neg = sum(1 for x in labs if x in {NEG, "0", "neg"})
     if pos > majority_coef * neg:
@@ -57,12 +63,13 @@ def overall_polarity_three_class(
     labels: Iterable[LabelLike],
     neutral_ratio: float = 0.85,
     majority_coef: float = 1.5,
+    label_names: Optional[Sequence[str]] = None,
 ) -> str:
-    """Algorithm 1 (Paper 2): three-class overall polarity."""
-    labs = _as_label_list(labels)
+    """Algorithm 1: three-class overall polarity."""
+    labs = _as_label_list(labels, label_names)
     n = len(labs) or 1
     counts = Counter(labs)
-    neu = counts.get(NEU, 0) + counts.get("2", 0)
+    neu = counts.get(NEU, 0)
     pos = counts.get(POS, 0)
     neg = counts.get(NEG, 0)
     if neu > neutral_ratio * n:
@@ -78,9 +85,10 @@ def overall_polarity_four_class(
     labels: Iterable[LabelLike],
     super_coef: float = 1.2,
     sub_coef: float = 1.5,
+    label_names: Optional[Sequence[str]] = None,
 ) -> str:
-    """Algorithm 3 (Paper 2): hierarchical four-class overall polarity."""
-    labs = _as_label_list(labels)
+    """Algorithm 3: hierarchical four-class overall polarity."""
+    labs = _as_label_list(labels, label_names)
     c = Counter(labs)
     hneg = c.get(H_NEG, 0)
     neg = c.get(NEG, 0)
@@ -100,32 +108,40 @@ def overall_polarity_five_class(
     neutral_ratio: float = 0.85,
     super_coef: float = 1.2,
     sub_coef: float = 1.5,
+    label_names: Optional[Sequence[str]] = None,
 ) -> str:
-    """Algorithm 4 (Paper 2): five-class overall polarity."""
-    labs = _as_label_list(labels)
+    """Algorithm 4: five-class overall polarity."""
+    labs = _as_label_list(labels, label_names)
     n = len(labs) or 1
     neu = sum(1 for x in labs if x == NEU)
     if neu > neutral_ratio * n:
         return NEU
-    # drop neutrals for hierarchical comparison (paper keeps counts as-is
-    # on full vector; hierarchical step still uses fine labels)
-    return overall_polarity_four_class(labs, super_coef=super_coef, sub_coef=sub_coef)
+    return overall_polarity_four_class(
+        labs, super_coef=super_coef, sub_coef=sub_coef, label_names=None
+    )
 
 
 def compare_original_vs_computed(
     gold: Sequence[LabelLike],
     pred: Sequence[LabelLike],
     mode: str = "binary",
+    label_names: Optional[Sequence[str]] = None,
 ) -> Mapping[str, str]:
     """Mirror Paper 2 Table VI style comparison."""
-    fn = {
+    fn_map = {
         "binary": overall_polarity_binary,
         "three": overall_polarity_three_class,
         "four": overall_polarity_four_class,
         "five": overall_polarity_five_class,
-    }[mode]
+    }
+    if mode not in fn_map:
+        raise ValueError(f"Unknown OP mode: {mode}")
+    fn = fn_map[mode]
+    orig = fn(gold, label_names=label_names)
+    comp = fn(pred, label_names=label_names)
     return {
-        "original_op": fn(gold),
-        "computed_op": fn(pred),
-        "match": str(fn(gold) == fn(pred)),
+        "original_op": orig,
+        "computed_op": comp,
+        "match": str(orig == comp),
+        "mode": mode,
     }
