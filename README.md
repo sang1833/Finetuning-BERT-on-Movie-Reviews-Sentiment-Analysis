@@ -21,14 +21,40 @@ This repository contains:
 ```bash
 pip install -r reproduce_paper2/requirements.txt
 
-# Smoke test
-python -m reproduce_paper2.train --epochs 1 --limit-train 512 --limit-test 256 --output-dir outputs/smoke_imdb2
+# List all Paper 2 datasets (Phase A+B)
+python -m reproduce_paper2.train --list-datasets
 
-# Full IMDb-2 binary (Paper 2 defaults: max_len=128, lr=3e-5, batch=32, epochs=10)
-python -m reproduce_paper2.train --output-dir outputs/imdb2_binary
+# Smoke: IMDb-2 binary
+python -m reproduce_paper2.train --dataset imdb2 --epochs 1 --limit-train 512 --limit-test 256 --output-dir outputs/smoke_imdb2
+
+# Full IMDb-2 binary (Paper 2 defaults)
+python -m reproduce_paper2.train --dataset imdb2 --output-dir outputs/imdb2
+
+# Fine-grained / other sets
+python -m reproduce_paper2.train --dataset imdb3
+python -m reproduce_paper2.train --dataset imdb4
+python -m reproduce_paper2.train --dataset sst2
+python -m reproduce_paper2.train --dataset sst5 --augment nlpaug
+python -m reproduce_paper2.train --dataset mr
 ```
 
-See [`reproduce_paper2/README.md`](reproduce_paper2/README.md) for settings, outputs, and limitations.
+### Phase C (tables + stats + aug)
+
+```bash
+# Table I: local counts vs paper
+python -m reproduce_paper2.table_i --out outputs/tables/table_i.csv
+
+# Run all Ours jobs (smoke) then export Table II–VI
+python -m reproduce_paper2.run_all_ours --smoke
+
+# Full paper-length runs (GPU)
+python -m reproduce_paper2.run_all_ours --device cuda --skip-existing
+
+# Export tables only from existing results
+python -m reproduce_paper2.export_tables --results-root outputs --out-dir outputs/tables
+```
+
+See [`reproduce_paper2/README.md`](reproduce_paper2/README.md) for Phases A–C.
 
 ### Polarity unit tests (no GPU)
 
