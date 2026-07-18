@@ -1,0 +1,19 @@
+# Training outputs
+outputs/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+
+# Model / data caches (local)
+.cache/
+*.pt
+*.keras
+*.h5
+
+# IDE
+.idea/
+.vscode/
+*.swp

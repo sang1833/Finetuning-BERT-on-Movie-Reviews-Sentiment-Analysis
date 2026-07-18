@@ -1,0 +1,9 @@
+# Paper 2 reproduction pipeline (PyTorch; works on modern Python)
+torch>=2.1
+transformers>=4.36
+tokenizers>=0.15
+numpy>=1.23
+pandas>=1.5
+scikit-learn>=1.2
+tqdm>=4.65
+safetensors>=0.4
